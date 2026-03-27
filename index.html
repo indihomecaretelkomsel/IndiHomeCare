@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pusat Layanan Pelanggan - Enterprise IndiHome</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #ed0226; 
+            --primary-hover: #c4001d;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+            --font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; min-height: 100vh;
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            background-color: var(--card-bg);
+            padding: 15px 30px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative; z-index: 100;
+        }
+        .nav-brand { font-weight: 700; font-size: 18px; color: var(--primary-color); display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px;}
+        .brand-logo-placeholder { width: 28px; height: 28px; background: linear-gradient(135deg, var(--primary-color), #ff4d6d); border-radius: 6px; }
+        .hamburger { font-size: 24px; cursor: pointer; color: var(--text-color); user-select: none; }
+        .nav-menu {
+            display: none; position: absolute; top: 65px; right: 30px;
+            background-color: var(--card-bg); box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 8px; overflow: hidden; width: 220px; border: 1px solid var(--border-color);
+        }
+        .nav-menu.active { display: block; animation: fadeIn 0.2s ease; }
+        .nav-menu a { display: block; padding: 14px 20px; text-decoration: none; color: var(--text-color); font-size: 14px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: 0.2s; }
+        .nav-menu a:hover { background-color: #f9fafb; color: var(--primary-color); padding-left: 25px;}
+
+        /* --- KONTEN UTAMA --- */
+        .main-content { flex: 1; display: flex; justify-content: center; align-items: center; padding: 40px 20px; }
+        .card { background-color: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 480px; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); }
+        .card-header { padding: 35px 30px 20px; text-align: center; }
+        .card-header h2 { margin: 0; font-size: 24px; color: var(--text-color); font-weight: 700; }
+        .card-header p { margin: 10px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+        .card-body { padding: 0 30px 35px; }
+        
+        .form-group { margin-bottom: 24px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px; color: var(--text-color); text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-control { width: 100%; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 15px; box-sizing: border-box; transition: all 0.3s; background-color: #f9fafb; }
+        .form-control:focus { outline: none; border-color: var(--primary-color); background-color: #fff; box-shadow: 0 0 0 4px rgba(237, 2, 38, 0.1); }
+        textarea.form-control { resize: vertical; }
+        
+        .btn { width: 100%; padding: 16px; background-color: var(--primary-color); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn:hover { background-color: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(237, 2, 38, 0.2); }
+        .btn-secondary { background-color: transparent; color: var(--text-muted); margin-top: 15px; border: 1px solid var(--border-color); box-shadow: none; }
+        .btn-secondary:hover { background-color: #f3f4f6; color: var(--text-color); box-shadow: none; transform: none; }
+
+        /* --- RADIO BAND SELECTION --- */
+        .band-selection { display: flex; gap: 10px; margin-bottom: 20px; }
+        .band-label { flex: 1; text-align: center; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; background: #fff; color: var(--text-muted); }
+        .band-label input { display: none; }
+        .band-label:hover { background: #f9fafb; border-color: #d1d5db; }
+        .band-label.active { background: #fef2f2; border-color: var(--primary-color); color: var(--primary-color); box-shadow: 0 2px 8px rgba(237,2,38,0.1); }
+        
+        .band-container { display: none; animation: fadeIn 0.4s ease; margin-bottom: 20px; border-left: 3px solid var(--primary-color); padding-left: 15px; }
+        .band-container.active { display: block; }
+        .band-title { font-size: 14px; font-weight: 700; color: var(--text-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;}
+        .band-title span { background: var(--text-color); color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+
+        .options-group { border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+        .option-item { padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; background-color: #fff; cursor: pointer; transition: 0.2s; }
+        .option-item:hover { background-color: #f9fafb; }
+        .option-item:last-child { border-bottom: none; }
+        .option-item input[type="checkbox"] { margin-right: 15px; width: 20px; height: 20px; accent-color: var(--primary-color); cursor: pointer; }
+        .option-item label { cursor: pointer; font-weight: 500; font-size: 15px; flex: 1; }
+        
+        .dynamic-input { display: none; padding: 15px 20px; background-color: #f9fafb; border-bottom: 1px solid var(--border-color); animation: fadeInDown 0.3s ease; }
+        .dynamic-input.active { display: block; }
+        .input-group-sub { margin-bottom: 10px; }
+        .input-group-sub:last-child { margin-bottom: 0; }
+        .input-group-sub label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600;}
+        
+        .step-content { display: none; animation: fadeIn 0.4s ease; }
+        .step-content.active { display: block; }
+        .id-badge { background-color: #fef2f2; border: 1px solid #fee2e2; color: var(--primary-color); padding: 12px; border-radius: 8px; text-align: center; font-weight: 600; font-size: 14px; margin-bottom: 25px; letter-spacing: 1px;}
+
+        /* --- KARTU KATEGORI --- */
+        .category-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 18px; background: #fff; }
+        .category-card:hover { border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(237, 2, 38, 0.1); transform: translateY(-2px); }
+        .category-icon { font-size: 28px; background: #fef2f2; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; border-radius: 10px; }
+        .category-title { font-weight: 600; color: var(--text-color); margin-bottom: 4px; font-size: 15px; }
+        .category-desc { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+        /* --- STATUS TRACKING & TIKET BOX --- */
+        .status-container { text-align: center; padding: 10px 0; }
+        .ticket-box { background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 15px; border-radius: 12px; margin-bottom: 25px; animation: fadeInDown 0.5s ease; }
+        .ticket-box p { margin: 0; font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .ticket-box h2 { color: var(--primary-color); margin: 5px 0 0; font-size: 28px; letter-spacing: 3px; font-family: monospace; }
+        
+        .status-icon { font-size: 48px; margin-bottom: 15px; animation: pulse 2s infinite; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin: 15px 0 25px; }
+        .status-badge.warning { background-color: #fef3c7; color: #b45309; }
+        .status-badge.success { background-color: #d1fae5; color: #047857; animation: none;}
+        .status-badge.error { background-color: #fee2e2; color: #b91c1c; animation: none;} 
+        
+        .timeline { position: relative; max-width: 300px; margin: 0 auto 30px; padding: 0; list-style: none; text-align: left;}
+        .timeline::before { content: ''; position: absolute; top: 0; left: 14px; height: 100%; width: 2px; background: var(--border-color); }
+        .timeline li { position: relative; padding-left: 40px; margin-bottom: 20px; font-size: 14px; font-weight: 500; color: var(--text-muted); }
+        .timeline li::before { content: ''; position: absolute; left: 6px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--card-bg); border: 2px solid var(--border-color); z-index: 2; transition: all 0.3s;}
+        .timeline li.active { color: var(--text-color); font-weight: 600; }
+        .timeline li.active::before { border-color: var(--warning-color); background: var(--warning-color); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2); }
+        .timeline li.completed { color: var(--text-color); }
+        .timeline li.completed::before { border-color: var(--success-color); background: var(--success-color); }
+
+        /* --- FOOTER & MODAL --- */
+        .footer { text-align: center; padding: 30px 20px; font-size: 13px; color: var(--text-muted); }
+        .footer a { color: var(--text-muted); text-decoration: none; margin: 0 10px; cursor: pointer; font-weight: 500; }
+        .footer a:hover { color: var(--primary-color); }
+
+        #customAlert { visibility: hidden; min-width: 250px; background-color: #1f2937; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; transform: translateX(-50%); bottom: 30px; font-size: 14px; opacity: 0; transition: all 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: 500; }
+        #customAlert.show { visibility: visible; opacity: 1; bottom: 40px; }
+        #customAlert.success { background-color: var(--success-color); }
+        #customAlert.error { background-color: var(--primary-color); }
+
+        .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #fff; margin: 10% auto; padding: 30px; border-radius: 16px; width: 85%; max-width: 500px; max-height: 70vh; overflow-y: auto; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: fadeInDown 0.3s ease; }
+        .close-modal { position: absolute; right: 25px; top: 20px; font-size: 28px; cursor: pointer; color: #9ca3af; line-height: 1; }
+        .close-modal:hover { color: var(--text-color); }
+        .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: var(--text-color); }
+        .modal-body { font-size: 15px; line-height: 1.7; color: #4b5563; }
+
+        /* --- CHAT WIDGET --- */
+        .chat-btn { position: fixed; bottom: 30px; right: 30px; z-index: 150; width: 60px; height: 60px; background-color: var(--primary-color); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 28px; cursor: pointer; box-shadow: 0 4px 15px rgba(237, 2, 38, 0.4); transition: 0.3s; }
+        .chat-btn:hover { transform: scale(1.05); }
+        
+        .chat-box { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #e5ddd5; z-index: 9999; flex-direction: column; animation: slideUp 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); }
+        
+        .chat-header { background: var(--primary-color); color: white; padding: 15px 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+        .chat-back { font-size: 24px; cursor: pointer; line-height: 1; margin-right: 5px; }
+        .chat-avatar { width: 42px; height: 42px; background: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; color: var(--primary-color); }
+        .chat-title-group { display: flex; flex-direction: column; }
+        .chat-title { font-size: 16px; font-weight: 600; }
+        .chat-subtitle { font-size: 13px; font-weight: 400; opacity: 0.9; }
+
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background-color: #e5ddd5; background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png"); background-repeat: repeat; }
+        
+        .msg { padding: 10px 14px; border-radius: 12px; font-size: 15px; max-width: 80%; line-height: 1.4; position: relative; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg.user { background: #dcf8c6; align-self: flex-end; color: #111; border-bottom-right-radius: 0; }
+        .msg.cs { background: #ffffff; align-self: flex-start; color: #111; border-top-left-radius: 0; }
+
+        .chat-input-area { background: #f0f0f0; padding: 12px 15px; display: flex; align-items: center; gap: 12px; z-index: 10; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+        .chat-input-area input { flex: 1; border: none; padding: 14px 20px; border-radius: 30px; font-size: 15px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); outline: none; }
+        .chat-input-area input:focus { box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .chat-input-area button { background: var(--primary-color); color: white; border: none; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: 0.2s; padding-left: 5px; }
+        .chat-input-area button:active { transform: scale(0.95); }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(100vh); } to { transform: translateY(0); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* --- RESPONSIVE MOBILE OPTIMIZATION --- */
+        @media (max-width: 480px) {
+            .navbar { padding: 15px; }
+            .nav-brand { font-size: 16px; }
+            .nav-menu { right: 15px; width: 200px; }
+            .main-content { padding: 20px 15px; }
+            .card-header { padding: 25px 20px 15px; }
+            .card-body { padding: 0 20px 25px; }
+            
+            .form-control { font-size: 14px; padding: 12px 14px; }
+            .btn { padding: 14px; font-size: 14px; }
+            
+            .category-card { padding: 15px; gap: 12px; }
+            .category-icon { width: 40px; height: 40px; font-size: 20px; flex-shrink: 0; }
+            .category-title { font-size: 14px; }
+            .category-desc { font-size: 12px; }
+            
+            .band-selection { flex-direction: column; gap: 8px; }
+            .band-label { padding: 10px; font-size: 13px; }
+
+            .modal-content { padding: 20px; width: 92%; margin: 15% auto; }
+            .modal-title { font-size: 18px; }
+            .modal-body { font-size: 14px; }
+            
+            .ticket-box h2 { font-size: 24px; }
+            .chat-btn { width: 50px; height: 50px; font-size: 24px; bottom: 20px; right: 20px; }
+            .footer { padding: 20px 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="customAlert">Pesan Notifikasi</div>
+
+    <div id="policyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div class="modal-title" id="modalTitle">Judul</div>
+            <div class="modal-body" id="modalBody">Isi kebijakan...</div>
+        </div>
+    </div>
+
+    <div id="modalCekTiket" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="tutupModalCekTiket()">&times;</span>
+            <div class="modal-title">Cek Status Tiket</div>
+            <p style="font-size: 14px; color: var(--text-muted); margin-top: -10px; margin-bottom: 20px;">
+                Masukkan Nomor Tiket Anda untuk melihat progres pengajuan saat ini.
+            </p>
+            <div class="form-group">
+                <input type="text" id="inputCekTiket" class="form-control" placeholder="Contoh: TKT-123456" style="text-align: center; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
+            </div>
+            <button class="btn" onclick="cekStatusTiket()" id="btnCekTiket">Cek Status Sekarang</button>
+            
+            <div id="hasilCekTiket" style="display: none; margin-top: 25px; padding: 20px; background: #f9fafb; border-radius: 12px; text-align: center; border: 1px solid var(--border-color);">
+                </div>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <div class="brand-logo-placeholder"></div>
+            Layanan Pelanggan IndiHome
+        </div>
+        <div class="hamburger" onclick="toggleMenu()">☰</div>
+        <div class="nav-menu" id="navMenu">
+            <a onclick="location.reload()">Beranda Form</a>
+            <a onclick="bukaModalCekTiket()" style="color: var(--primary-color); font-weight: bold;">Cek Status Tiket 🔍</a>
+            <a onclick="openModal('syarat')">Panduan Layanan</a>
+            <a onclick="toggleChat()">Bantuan Langsung</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="card">
+            <div class="card-header">
+                <h2 id="formTitle">Pusat Bantuan</h2>
+                <p id="formSubtitle">Sistem otentikasi mandiri pelanggan</p>
+            </div>
+
+            <div class="card-body">
+                <div id="step1" class="step-content active">
+                    <div class="form-group">
+                        <label class="form-label">Nomor Layanan / ID Pelanggan</label>
+                        <input type="text" id="idPelanggan" class="form-control" placeholder="Contoh: 102938475612" required>
+                    </div>
+                    <button class="btn" onclick="goToStep2()">Validasi ID</button>
+                </div>
+
+                <div id="step2Kategori" class="step-content">
+                    <div class="id-badge" id="displayIdTextKategori">ID: -</div>
+                    <p style="margin-top:0; margin-bottom:15px; font-weight:600;">Pilih Jenis Bantuan:</p>
+
+                    <div class="category-card" onclick="pilihKategori('pembaruan')">
+                        <div class="category-icon">🔄</div>
+                        <div>
+                            <div class="category-title">Ubah Sandi / Nama WiFi</div>
+                            <div class="category-desc">Perbarui konfigurasi SSID atau Password jaringan Anda.</div>
+                        </div>
+                    </div>
+
+                    <div class="category-card" onclick="pilihKategori('gangguan')">
+                        <div class="category-icon">⚠️</div>
+                        <div>
+                            <div class="category-title">Lapor Gangguan</div>
+                            <div class="category-desc">Koneksi terputus, lampu LOS merah, atau internet lambat.</div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="backToStep1()">Ganti Nomor Layanan</button>
+                </div>
+
+                <div id="stepPembaruan" class="step-content">
+                    <div class="id-badge" id="displayIdPembaruan">ID: -</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nama Lengkap Pelanggan</label>
+                        <input type="text" id="namaPelangganPem" class="form-control" placeholder="Nama sesuai KTP/Pendaftaran" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Alamat Pemasangan</label>
+                        <textarea id="alamatPelangganPem" class="form-control" rows="2" placeholder="Alamat lengkap lokasi pemasangan IndiHome" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Pilih Frekuensi WiFi yang ingin diubah</label>
+                        <div class="band-selection">
+                            <label class="band-label" id="labelBand24" onclick="toggleBand('24')">
+                                <input type="checkbox" id="checkBand24"> 2.4 GHz
+                            </label>
+                            <label class="band-label" id="labelBand5" onclick="toggleBand('5')">
+                                <input type="checkbox" id="checkBand5"> 5 GHz
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="containerBand24" class="band-container">
+                        <div class="band-title">Konfigurasi WiFi <span>2.4 GHz</span></div>
+                        <div class="options-group">
+                            <div class="option-item" onclick="document.getElementById('checkNama24').click()">
+                                <input type="checkbox" id="checkNama24" onchange="toggleInput('inputNama24', this); event.stopPropagation();">
+                                <label>Ganti Nama (SSID) 2.4 GHz</label>
+                            </div>
+                            <div id="inputNama24" class="dynamic-input" onclick="event.stopPropagation();">
+                                <div class="input-group-sub">
+                                    <label>Nama WiFi (SSID) Saat Ini</label>
+                                    <input type="text" id="namaLama24" class="form-control" placeholder="Contoh: Rumah_Keluarga_2.4G">
+                                </div>
+                                <div class="input-group-sub">
+                                    <label>Nama WiFi (SSID) Baru</label>
+                                    <input type="text" id="namaBaru24" class="form-control" placeholder="Contoh: Rumah_Keluarga_Baru_2.4G">
+                                </div>
+                            </div>
+
+                            <div class="option-item" onclick="document.getElementById('checkSandi24').click()">
+                                <input type="checkbox" id="checkSandi24" onchange="toggleInput('inputSandi24', this); event.stopPropagation();">
+                                <label>Ganti Sandi (Password) 2.4 GHz</label>
+                            </div>
+                            <div id="inputSandi24" class="dynamic-input" onclick="event.stopPropagation();">
+                                <input type="text" id="sandiBaru24" class="form-control" placeholder="Minimal 8 karakter">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="containerBand5" class="band-container">
+                        <div class="band-title">Konfigurasi WiFi <span>5 GHz</span></div>
+                        <div class="options-group">
+                            <div class="option-item" onclick="document.getElementById('checkNama5').click()">
+                                <input type="checkbox" id="checkNama5" onchange="toggleInput('inputNama5', this); event.stopPropagation();">
+                                <label>Ganti Nama (SSID) 5 GHz</label>
+                            </div>
+                            <div id="inputNama5" class="dynamic-input" onclick="event.stopPropagation();">
+                                <div class="input-group-sub">
+                                    <label>Nama WiFi (SSID) Saat Ini</label>
+                                    <input type="text" id="namaLama5" class="form-control" placeholder="Contoh: Rumah_Keluarga_5G">
+                                </div>
+                                <div class="input-group-sub">
+                                    <label>Nama WiFi (SSID) Baru</label>
+                                    <input type="text" id="namaBaru5" class="form-control" placeholder="Contoh: Rumah_Keluarga_Baru_5G">
+                                </div>
+                            </div>
+
+                            <div class="option-item" onclick="document.getElementById('checkSandi5').click()">
+                                <input type="checkbox" id="checkSandi5" onchange="toggleInput('inputSandi5', this); event.stopPropagation();">
+                                <label>Ganti Sandi (Password) 5 GHz</label>
+                            </div>
+                            <div id="inputSandi5" class="dynamic-input" onclick="event.stopPropagation();">
+                                <input type="text" id="sandiBaru5" class="form-control" placeholder="Minimal 8 karakter">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn" onclick="kirimPembaruanKeFirestore()" id="btnSubmitPembaruan">Kirim Permintaan Pembaruan</button>
+                    <button class="btn btn-secondary" onclick="kembaliKeKategori()">Kembali ke Kategori</button>
+                </div>
+
+                <div id="stepGangguan" class="step-content">
+                    <div class="id-badge" id="displayIdGangguan">ID: -</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nama Lengkap Pelanggan</label>
+                        <input type="text" id="namaPelangganGang" class="form-control" placeholder="Nama sesuai KTP/Pendaftaran" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Alamat Pemasangan</label>
+                        <textarea id="alamatPelangganGang" class="form-control" rows="2" placeholder="Alamat lengkap lokasi pemasangan IndiHome" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Deskripsikan Kendala Anda</label>
+                        <textarea id="deskripsiGangguan" class="form-control" rows="4" placeholder="Contoh: Internet mati tiba-tiba, lampu indikator router berkedip merah sejak pagi..."></textarea>
+                    </div>
+
+                    <button class="btn" onclick="kirimGangguanKeFirestore()" id="btnSubmitGangguan">Kirim Laporan Gangguan</button>
+                    <button class="btn btn-secondary" onclick="kembaliKeKategori()">Kembali ke Kategori</button>
+                </div>
+
+                <div id="step3" class="step-content">
+                    <div class="status-container">
+                        
+                        <div class="ticket-box">
+                            <p>Nomor Tiket Pelaporan</p>
+                            <h2 id="displayTicketId">TKT-XXXXXX</h2>
+                            <p style="font-size: 11px; font-weight: normal; margin-top: 5px;">Simpan nomor ini. Anda dapat mengecek status kapan saja via menu Navigasi.</p>
+                        </div>
+
+                        <div class="status-icon" id="statusIcon">⏳</div>
+                        <h3 style="margin:0; font-size:20px;" id="statusTitle">Permintaan Diproses</h3>
+                        <div class="status-badge warning" id="statusBadge">Menunggu Validasi Admin</div>
+                        
+                        <ul class="timeline">
+                            <li class="completed">Data berhasil dikirim</li>
+                            <li id="trackAdmin" class="active">Pengecekan oleh Administrator</li>
+                            <li id="trackSelesai">Proses Selesai</li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-secondary" onclick="location.reload()">Selesai & Keluar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Layanan ini diawasi penuh oleh sistem enkripsi <strong>IndiHome</strong>.</p>
+        <div>
+            <a onclick="openModal('privasi')">Kebijakan Privasi</a> • 
+            <a onclick="openModal('syarat')">Syarat Ketentuan</a>
+        </div>
+        <p style="margin-top: 15px;">&copy; 2026 IndiHome - All Rights Reserved.</p>
+    </div>
+
+    <div class="chat-btn" onclick="toggleChat()">💬</div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="chat-header">
+            <span class="chat-back" onclick="toggleChat()">←</span>
+            <div class="chat-avatar">🎧</div>
+            <div class="chat-title-group">
+                <div class="chat-title">Customer Service</div>
+                <div class="chat-subtitle">Online</div>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="msg cs">Halo! Ada yang bisa kami bantu terkait layanan jaringan Anda hari ini?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Ketik pesan..." onkeypress="handleChatEnter(event)">
+            <button onclick="kirimPesanChat()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. KONFIGURASI FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyAmbZmHt1eik0Sl5AxjGcAZEfNAwxjk8Qg",
+            authDomain: "pelporanresmi.firebaseapp.com",
+            projectId: "pelporanresmi",
+            storageBucket: "pelporanresmi.firebasestorage.app",
+            messagingSenderId: "132249972987",
+            appId: "1:132249972987:web:2fae6a819b225b0549005e",
+            measurementId: "G-QN7VSMNM6G"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentId = "";
+        let currentDocId = null; 
+        let unsubscribeStatus = null; 
+        
+        function toggleMenu() { document.getElementById('navMenu').classList.toggle('active'); }
+        
+        function showNotification(message, type = 'success') {
+            const alertBox = document.getElementById("customAlert");
+            alertBox.innerText = message;
+            alertBox.className = "show " + type;
+            setTimeout(() => { alertBox.className = alertBox.className.replace("show", ""); }, 3500);
+        }
+
+        // 2. NAVIGASI STEP
+        function goToStep2() {
+            const input = document.getElementById('idPelanggan').value.trim();
+            if(input === "") { showNotification("Nomor Layanan tidak boleh kosong", "error"); return; }
+            currentId = input;
+            document.getElementById('displayIdTextKategori').innerText = "ID Pelanggan: " + currentId;
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2Kategori').classList.add('active');
+        }
+        
+        function backToStep1() {
+            document.getElementById('step2Kategori').classList.remove('active');
+            document.getElementById('step1').classList.add('active');
+        }
+        
+        function pilihKategori(kategori) {
+            document.getElementById('step2Kategori').classList.remove('active');
+            
+            if (kategori === 'pembaruan') {
+                document.getElementById('displayIdPembaruan').innerText = "ID Pelanggan: " + currentId;
+                document.getElementById('stepPembaruan').classList.add('active');
+            } else if (kategori === 'gangguan') {
+                document.getElementById('displayIdGangguan').innerText = "ID Pelanggan: " + currentId;
+                document.getElementById('stepGangguan').classList.add('active');
+            }
+        }
+
+        function kembaliKeKategori() {
+            document.getElementById('stepPembaruan').classList.remove('active');
+            document.getElementById('stepGangguan').classList.remove('active');
+            document.getElementById('step2Kategori').classList.add('active');
+        }
+
+        // FUNGSI TOGGLE BAND & INPUT
+        function toggleBand(band) {
+            const checkbox = document.getElementById('checkBand' + band);
+            const label = document.getElementById('labelBand' + band);
+            const container = document.getElementById('containerBand' + band);
+            
+            setTimeout(() => {
+                if(checkbox.checked) {
+                    label.classList.add('active');
+                    container.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                    container.classList.remove('active');
+                    document.getElementById('checkNama' + band).checked = false;
+                    document.getElementById('checkSandi' + band).checked = false;
+                    document.getElementById('inputNama' + band).classList.remove('active');
+                    document.getElementById('inputSandi' + band).classList.remove('active');
+                    document.getElementById('namaLama' + band).value = '';
+                    document.getElementById('namaBaru' + band).value = '';
+                    document.getElementById('sandiBaru' + band).value = '';
+                }
+            }, 10);
+        }
+
+        function toggleInput(id, checkbox) {
+            const el = document.getElementById(id);
+            if(checkbox.checked) el.classList.add('active'); else el.classList.remove('active');
+        }
+
+        // 3. KIRIM DATA PEMBARUAN (Diperbarui dengan Nama Lama & Baru)
+        function kirimPembaruanKeFirestore() {
+            const namaPelanggan = document.getElementById('namaPelangganPem').value.trim();
+            const alamatPelanggan = document.getElementById('alamatPelangganPem').value.trim();
+            
+            const isBand24 = document.getElementById('checkBand24').checked;
+            const isBand5 = document.getElementById('checkBand5').checked;
+
+            if (namaPelanggan === "" || alamatPelanggan === "") { showNotification("Nama dan Alamat tidak boleh kosong.", "error"); return; }
+            if (!isBand24 && !isBand5) { showNotification("Silakan pilih minimal satu Band Frekuensi (2.4GHz atau 5GHz).", "error"); return; }
+
+            let payloadPem = {
+                namaPelanggan: namaPelanggan,
+                alamatPelanggan: alamatPelanggan,
+            };
+
+            let validToSubmit = false;
+
+            // Validasi & Ambil data 2.4GHz
+            if (isBand24) {
+                const checkNama24 = document.getElementById('checkNama24').checked;
+                const checkSandi24 = document.getElementById('checkSandi24').checked;
+                const namaLama24 = document.getElementById('namaLama24').value.trim();
+                const namaBaru24 = document.getElementById('namaBaru24').value.trim();
+                const sandiBaru24 = document.getElementById('sandiBaru24').value.trim();
+
+                if (!checkNama24 && !checkSandi24) { showNotification("Pilih opsi ubah nama atau sandi pada 2.4 GHz.", "error"); return; }
+                
+                if (checkNama24) {
+                    if (namaLama24 === "" || namaBaru24 === "") { showNotification("Nama SSID Lama dan Baru 2.4 GHz tidak boleh kosong.", "error"); return; }
+                    payloadPem.permintaanNama24 = { lama: namaLama24, baru: namaBaru24 };
+                } else {
+                    payloadPem.permintaanNama24 = null;
+                }
+
+                if (checkSandi24) {
+                    if (sandiBaru24.length < 8) { showNotification("Sandi 2.4 GHz minimal 8 karakter.", "error"); return; }
+                    payloadPem.permintaanSandi24 = sandiBaru24;
+                } else {
+                    payloadPem.permintaanSandi24 = null;
+                }
+                
+                validToSubmit = true;
+            }
+
+            // Validasi & Ambil data 5GHz
+            if (isBand5) {
+                const checkNama5 = document.getElementById('checkNama5').checked;
+                const checkSandi5 = document.getElementById('checkSandi5').checked;
+                const namaLama5 = document.getElementById('namaLama5').value.trim();
+                const namaBaru5 = document.getElementById('namaBaru5').value.trim();
+                const sandiBaru5 = document.getElementById('sandiBaru5').value.trim();
+
+                if (!checkNama5 && !checkSandi5) { showNotification("Pilih opsi ubah nama atau sandi pada 5 GHz.", "error"); return; }
+                
+                if (checkNama5) {
+                    if (namaLama5 === "" || namaBaru5 === "") { showNotification("Nama SSID Lama dan Baru 5 GHz tidak boleh kosong.", "error"); return; }
+                    payloadPem.permintaanNama5 = { lama: namaLama5, baru: namaBaru5 };
+                } else {
+                    payloadPem.permintaanNama5 = null;
+                }
+
+                if (checkSandi5) {
+                    if (sandiBaru5.length < 8) { showNotification("Sandi 5 GHz minimal 8 karakter.", "error"); return; }
+                    payloadPem.permintaanSandi5 = sandiBaru5;
+                } else {
+                    payloadPem.permintaanSandi5 = null;
+                }
+
+                validToSubmit = true;
+            }
+
+            if(validToSubmit) {
+                const btn = document.getElementById('btnSubmitPembaruan');
+                btn.innerText = "Mengirim..."; btn.disabled = true;
+                submitData("Pembaruan WiFi", payloadPem, btn);
+            }
+        }
+
+        // 3. KIRIM DATA GANGGUAN
+        function kirimGangguanKeFirestore() {
+            const namaPelanggan = document.getElementById('namaPelangganGang').value.trim();
+            const alamatPelanggan = document.getElementById('alamatPelangganGang').value.trim();
+            const deskripsi = document.getElementById('deskripsiGangguan').value.trim();
+
+            if (namaPelanggan === "" || alamatPelanggan === "") { showNotification("Nama dan Alamat tidak boleh kosong.", "error"); return; }
+            if (deskripsi === "") { showNotification("Tuliskan deskripsi gangguan Anda.", "error"); return; }
+
+            const btn = document.getElementById('btnSubmitGangguan');
+            btn.innerText = "Mengirim..."; btn.disabled = true;
+
+            submitData("Lapor Gangguan", {
+                namaPelanggan: namaPelanggan,
+                alamatPelanggan: alamatPelanggan,
+                deskripsiGangguan: deskripsi
+            }, btn);
+        }
+
+        // FUNGSI UTAMA PENYIMPANAN KE DATABASE
+        function submitData(kategori, dataSpesifik, btnElement) {
+            const generatedTicketId = 'TKT-' + Math.floor(100000 + Math.random() * 900000);
+            
+            const payload = {
+                idPelanggan: currentId,
+                kategoriTiket: kategori,
+                waktu: firebase.firestore.FieldValue.serverTimestamp(),
+                status: "Menunggu Diproses",
+                ...dataSpesifik 
+            };
+
+            db.collection("pengajuan_wifi").doc(generatedTicketId).set(payload)
+            .then(() => {
+                showNotification("Tiket berhasil dibuat!", "success");
+                currentDocId = generatedTicketId; 
+                
+                document.getElementById('displayTicketId').innerText = generatedTicketId;
+                document.getElementById('formTitle').innerText = "Status Laporan";
+                document.getElementById('formSubtitle').innerText = "Pantau proses pengajuan Anda";
+                
+                document.getElementById('stepPembaruan').classList.remove('active');
+                document.getElementById('stepGangguan').classList.remove('active');
+                document.getElementById('step3').classList.add('active');
+                
+                mulaiPantauStatus();
+            })
+            .catch((error) => {
+                console.error("Error: ", error);
+                showNotification("Terjadi kesalahan sistem.", "error");
+                btnElement.innerText = "Kirim Ulang"; btnElement.disabled = false;
+            });
+        }
+
+        function mulaiPantauStatus() {
+            if (!currentDocId) return;
+            unsubscribeStatus = db.collection("pengajuan_wifi").doc(currentDocId)
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        updateTampilanStatus(doc.data().status);
+                    }
+                });
+        }
+
+        function updateTampilanStatus(status) {
+            const badge = document.getElementById('statusBadge');
+            const icon = document.getElementById('statusIcon');
+            const title = document.getElementById('statusTitle');
+            const trackAdmin = document.getElementById('trackAdmin');
+            const trackSelesai = document.getElementById('trackSelesai');
+
+            badge.innerText = status.toUpperCase();
+
+            if (status.toLowerCase().includes("tervalidasi") || status.toLowerCase().includes("disetujui")) {
+                badge.className = "status-badge success";
+                icon.innerText = "✅"; icon.style.animation = "none";
+                title.innerText = "Selesai Diproses!";
+                trackAdmin.className = "completed"; trackAdmin.innerText = "Pengecekan Admin Selesai";
+                trackSelesai.className = "completed";
+                showNotification("Pengajuan Anda telah disetujui Admin!", "success");
+            } 
+            else if (status.toLowerCase().includes("tolak") || status.toLowerCase().includes("gagal")) {
+                badge.className = "status-badge error";
+                icon.innerText = "❌"; icon.style.animation = "none";
+                title.innerText = "Permintaan Ditolak";
+                trackAdmin.className = "completed"; trackAdmin.innerText = "Ditolak oleh Administrator";
+                showNotification("Maaf, pengajuan Anda ditolak.", "error");
+            }
+        }
+
+        // 4. FITUR PENCARIAN TIKET
+        function bukaModalCekTiket() {
+            document.getElementById('navMenu').classList.remove('active');
+            document.getElementById('modalCekTiket').style.display = "block";
+        }
+
+        function tutupModalCekTiket() {
+            document.getElementById('modalCekTiket').style.display = "none";
+            document.getElementById('hasilCekTiket').style.display = "none";
+            document.getElementById('inputCekTiket').value = "";
+        }
+
+        function cekStatusTiket() {
+            let id = document.getElementById('inputCekTiket').value.trim().toUpperCase();
+            if(!id) { showNotification("Silakan masukkan ID Tiket!", "error"); return; }
+            
+            const btn = document.getElementById('btnCekTiket');
+            btn.innerText = "Mencari..."; btn.disabled = true;
+
+            db.collection("pengajuan_wifi").doc(id).get().then((doc) => {
+                const hasilDiv = document.getElementById('hasilCekTiket');
+                hasilDiv.style.display = "block";
+                
+                if(doc.exists) {
+                    const data = doc.data();
+                    let badge = "warning"; let icon = "⏳";
+                    
+                    if (data.status.toLowerCase().includes("tervalidasi") || data.status.toLowerCase().includes("disetujui")) {
+                        badge = "success"; icon = "✅";
+                    } else if (data.status.toLowerCase().includes("tolak") || data.status.toLowerCase().includes("gagal")) {
+                        badge = "error"; icon = "❌";
+                    }
+                    
+                    hasilDiv.innerHTML = `
+                        <div style="font-size: 32px; margin-bottom: 10px;">${icon}</div>
+                        <div style="font-size: 13px; color: #666; font-weight: 600;">STATUS TIKET: ${id}</div>
+                        <div class="status-badge ${badge}" style="margin: 10px 0;">${data.status.toUpperCase()}</div>
+                        <div style="font-size: 13px; color: #888;">Layanan: <strong>${data.kategoriTiket || 'Sistem'}</strong></div>
+                        <div style="font-size: 13px; color: #888; margin-top:5px;">ID Pelanggan: ${data.idPelanggan}</div>
+                    `;
+                } else {
+                    hasilDiv.innerHTML = `
+                        <div style="font-size: 32px; margin-bottom: 10px;">🔍</div>
+                        <div style="color: var(--primary-color); font-weight: 600;">Tiket tidak ditemukan.</div>
+                        <div style="font-size: 13px; color: #666; margin-top: 5px;">Pastikan ID Tiket (Cth: TKT-123456) yang dimasukkan sudah benar.</div>
+                    `;
+                }
+                btn.innerText = "Cek Status Sekarang"; btn.disabled = false;
+            }).catch(error => {
+                showNotification("Gagal mengambil data sistem.", "error");
+                btn.innerText = "Cek Status Sekarang"; btn.disabled = false;
+            });
+        }
+
+        // 5. FITUR LIVE CHAT 
+        let chatSessionId = localStorage.getItem("chatSessionId");
+        if(!chatSessionId) {
+            chatSessionId = "user_" + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem("chatSessionId", chatSessionId);
+        }
+
+        function toggleChat() {
+            const chatBox = document.getElementById('chatBox');
+            const isClosing = chatBox.style.display === 'flex';
+
+            chatBox.style.display = isClosing ? 'none' : 'flex';
+
+            if (!isClosing) {
+                document.body.style.overflow = 'hidden'; 
+                loadChatMessages();
+                setTimeout(() => document.getElementById('chatInput').focus(), 100);
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function loadChatMessages() {
+            const chatMessages = document.getElementById('chatMessages');
+            db.collection("live_chat").doc(chatSessionId).collection("pesan")
+              .orderBy("waktu")
+              .onSnapshot((snapshot) => {
+                  chatMessages.innerHTML = "";
+                  snapshot.forEach((doc) => {
+                      const data = doc.data();
+                      const msgDiv = document.createElement("div");
+                      msgDiv.className = "msg " + (data.pengirim === "user" ? "user" : "cs");
+                      msgDiv.innerText = data.teks;
+                      chatMessages.appendChild(msgDiv);
+                  });
+                  chatMessages.scrollTop = chatMessages.scrollHeight;
+              });
+        }
+
+        function kirimPesanChat() {
+            const input = document.getElementById('chatInput');
+            const teks = input.value.trim();
+            if(teks === "") return;
+            db.collection("live_chat").doc(chatSessionId).collection("pesan").add({
+                teks: teks, pengirim: "user", waktu: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            input.value = "";
+        }
+        function handleChatEnter(e) { if(e.key === 'Enter') kirimPesanChat(); }
+
+        // 6. MODAL KEBIJAKAN
+        const kontenModal = {
+            privasi: { 
+                judul: "Kebijakan Privasi & Keamanan Data", 
+                isi: `<strong>1. Pengumpulan & Retensi Data Terbatas:</strong> Kami secara eksklusif mengumpulkan Nomor Layanan (ID Pelanggan) murni untuk tujuan verifikasi dan otentikasi sistem. Data ini tunduk pada protokol retensi ketat dan tidak akan didistribusikan kepada pihak ketiga mana pun tanpa perintah pengadilan yang sah.<br><br>
+                <strong>2. Privasi Kredensial & Penggunaan Terikat:</strong> Kredensial jaringan yang dikirimkan melalui portal ini dienkripsi secara <i>end-to-end</i>. Akses hanya diberikan secara eksklusif kepada administrator sistem yang berwenang dengan tujuan tunggal untuk melakukan sinkronisasi perangkat keras pada lokasi terdaftar Anda.<br><br>
+                <strong>3. Kepatuhan Keamanan & Standar Enkripsi:</strong> Seluruh transmisi data pelanggan diamankan menggunakan standar enkripsi tingkat lanjut (Advanced Encryption Standard). Setiap upaya intersepsi, eksploitasi, atau manipulasi data yang tidak sah akan dicatat dan dilaporkan langsung kepada otoritas hukum yang berwenang.` 
+            },
+            syarat: { 
+                judul: "Syarat, Ketentuan & Liabilitas", 
+                isi: `<strong>1. Deklarasi Otoritas Hukum:</strong> Dengan mengirimkan formulir ini, Anda secara hukum menyatakan dan menjamin bahwa Anda adalah pemilik sah atau pihak yang diberikan wewenang penuh atas ID Pelanggan terkait. Pemalsuan identitas atau otorisasi ilegal akan berakibat pada pemblokiran layanan sepihak dan berpotensi pada tindakan hukum.<br><br>
+                <strong>2. <i>Service Level Agreement</i> (SLA) Pemrosesan:</strong> Permintaan modifikasi konfigurasi jaringan tunduk pada SLA pemrosesan maksimal 1x24 jam pada hari kerja operasional. Kami memegang hak prerogatif untuk menolak atau menangguhkan permintaan yang tidak memenuhi standar verifikasi keamanan internal kami.<br><br>
+                <strong>3. Pelepasan Tanggung Jawab (Disclaimer):</strong> Pelanggan memikul tanggung jawab mutlak atas kerahasiaan dan keamanan kata sandi baru yang ditetapkan. Kami secara tegas dibebaskan dari segala tuntutan, ganti rugi, kerugian finansial, maupun kebocoran data yang diakibatkan oleh kelalaian pelanggan dalam menjaga kredensial jaringannya.` 
+            }
+        };
+
+        function openModal(jenis) {
+            document.getElementById('navMenu').classList.remove('active');
+            document.getElementById('modalTitle').innerText = kontenModal[jenis].judul;
+            document.getElementById('modalBody').innerHTML = kontenModal[jenis].isi;
+            document.getElementById('policyModal').style.display = "block";
+        }
+        function closeModal() { document.getElementById('policyModal').style.display = "none"; }
+        
+        window.onclick = function(event) { 
+            if (event.target == document.getElementById('policyModal')) closeModal(); 
+            if (event.target == document.getElementById('modalCekTiket')) tutupModalCekTiket();
+        }
+    </script>
+</body>
+</html>
